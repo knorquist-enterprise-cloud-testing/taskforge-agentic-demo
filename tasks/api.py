@@ -59,3 +59,4 @@ def api_stats(request):
 # csrf_exempt keeps the demo API easy to call with curl. Do not copy this into
 # a production service without real authentication.
 task_list = csrf_exempt(task_list)
+api_stats = csrf_exempt(api_stats)
