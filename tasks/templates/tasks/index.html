@@ -1,0 +1,36 @@
+{% extends "tasks/base.html" %}
+
+{% block content %}
+<header>
+  <h1>TaskForge</h1>
+  <span class="badge">{{ remaining }} remaining</span>
+</header>
+
+<div class="card">
+  <form method="post" action="{% url 'tasks:add_task' %}">
+    {% csrf_token %}
+    <input type="text" name="title" placeholder="What needs doing?" maxlength="200" required>
+    <textarea name="description" rows="2" placeholder="Optional details"></textarea>
+    <button type="submit" class="primary">Add task</button>
+  </form>
+</div>
+
+<ul class="tasks">
+  {% for task in tasks %}
+  <li class="task {% if task.is_done %}done{% endif %}">
+    <form class="inline" method="post" action="{% url 'tasks:toggle_task' task.id %}">
+      {% csrf_token %}
+      <button type="submit" title="Toggle done">{% if task.is_done %}&#10003;{% else %}&#9711;{% endif %}</button>
+    </form>
+    <span class="title">{{ task.title }}</span>
+    <span class="status">{{ task.get_status_display }}</span>
+    <form class="inline" method="post" action="{% url 'tasks:delete_task' task.id %}">
+      {% csrf_token %}
+      <button type="submit" title="Delete">&times;</button>
+    </form>
+  </li>
+  {% empty %}
+  <li class="task"><span class="title">No tasks yet. Add one above.</span></li>
+  {% endfor %}
+</ul>
+{% endblock %}

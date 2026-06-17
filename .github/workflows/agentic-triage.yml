@@ -1,0 +1,64 @@
+name: Agentic triage (Copilot CLI)
+
+# Demonstrates orchestrating an agent PROGRAMMATICALLY with GitHub Copilot CLI
+# inside a GitHub Actions workflow. Copilot CLI runs non-interactively (`-p`)
+# on the runner, just like any other CLI tool, and writes a report.
+#
+# Setup (one-time): create a fine-grained PAT with the "Copilot Requests"
+# permission and store it as the repo secret COPILOT_CLI_TOKEN.
+#   Settings > Secrets and variables > Actions > New repository secret
+# Docs: https://docs.github.com/en/copilot/how-tos/copilot-cli/automate-copilot-cli/automate-with-actions
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays at 16:30 UTC — a weekly project digest.
+    - cron: "30 16 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard — require Copilot token
+        id: guard
+        env:
+          COPILOT_TOKEN_PRESENT: ${{ secrets.COPILOT_CLI_TOKEN != '' }}
+        run: |
+          if [ "$COPILOT_TOKEN_PRESENT" != "true" ]; then
+            echo "::warning::COPILOT_CLI_TOKEN secret is not set — skipping the Copilot step."
+            echo "Add a fine-grained PAT with the 'Copilot Requests' permission as COPILOT_CLI_TOKEN to enable this demo." >> "$GITHUB_STEP_SUMMARY"
+            echo "run_copilot=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_copilot=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.guard.outputs.run_copilot == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Copilot CLI
+        if: steps.guard.outputs.run_copilot == 'true'
+        run: npm install -g @github/copilot
+
+      - name: Run Copilot CLI (non-interactive) to build a weekly digest
+        if: steps.guard.outputs.run_copilot == 'true'
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_CLI_TOKEN }}
+        run: |
+          copilot -p "Review the git log for the last 7 days. Write a concise \
+            project digest (max 150 words) followed by a bullet list of the \
+            notable changes with short explanations. Write the result to \
+            digest.md." \
+            --allow-tool='shell(git:*)' --allow-tool=write --no-ask-user -s
+          echo "## Weekly project digest" >> "$GITHUB_STEP_SUMMARY"
+          cat digest.md >> "$GITHUB_STEP_SUMMARY"
