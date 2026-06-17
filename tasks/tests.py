@@ -85,3 +85,31 @@ class ApiTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
+
+
+class ApiStatsTests(TestCase):
+    def test_stats_empty_db(self):
+        response = self.client.get(reverse("tasks:api_stats"))
+        self.assertEqual(response.status_code, 200)
+        body = json.loads(response.content)
+        self.assertEqual(body["total"], 0)
+        self.assertEqual(body["open"], 0)
+        self.assertEqual(body["by_status"], {"todo": 0, "doing": 0, "done": 0})
+
+    def test_stats_mixed_status(self):
+        Task.objects.create(title="T1", status=Task.STATUS_TODO)
+        Task.objects.create(title="T2", status=Task.STATUS_TODO)
+        Task.objects.create(title="T3", status=Task.STATUS_DOING)
+        Task.objects.create(title="T4", status=Task.STATUS_DONE)
+        response = self.client.get(reverse("tasks:api_stats"))
+        self.assertEqual(response.status_code, 200)
+        body = json.loads(response.content)
+        self.assertEqual(body["total"], 4)
+        self.assertEqual(body["open"], 3)
+        self.assertEqual(body["by_status"]["todo"], 2)
+        self.assertEqual(body["by_status"]["doing"], 1)
+        self.assertEqual(body["by_status"]["done"], 1)
+
+    def test_stats_method_not_allowed(self):
+        response = self.client.post(reverse("tasks:api_stats"))
+        self.assertEqual(response.status_code, 405)

@@ -6,6 +6,7 @@ It exists so that agentic-development demos have a backend surface to extend
 """
 import json
 
+from django.db.models import Count
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -40,6 +41,22 @@ def task_list(request):
     return JsonResponse({"error": "Method not allowed."}, status=405)
 
 
+def api_stats(request):
+    """GET /api/stats/ -> aggregate task statistics."""
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed."}, status=405)
+
+    rows = Task.objects.values("status").annotate(count=Count("id"))
+    by_status = {Task.STATUS_TODO: 0, Task.STATUS_DOING: 0, Task.STATUS_DONE: 0}
+    for row in rows:
+        by_status[row["status"]] = row["count"]
+
+    total = sum(by_status.values())
+    open_count = by_status[Task.STATUS_TODO] + by_status[Task.STATUS_DOING]
+    return JsonResponse({"total": total, "by_status": by_status, "open": open_count})
+
+
 # csrf_exempt keeps the demo API easy to call with curl. Do not copy this into
 # a production service without real authentication.
 task_list = csrf_exempt(task_list)
+api_stats = csrf_exempt(api_stats)

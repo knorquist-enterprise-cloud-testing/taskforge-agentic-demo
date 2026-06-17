@@ -13,4 +13,5 @@ urlpatterns = [
     path("tasks/<int:task_id>/delete/", views.delete_task, name="delete_task"),
     # Backend JSON API
     path("api/tasks/", api.task_list, name="api_task_list"),
+    path("api/stats/", api.api_stats, name="api_stats"),
 ]
